@@ -1,0 +1,889 @@
+{
+  "name": "Clinic - Replies",
+  "nodes": [
+    {
+      "parameters": {
+        "mailbox": "clinic-replies",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.1,
+      "position": [
+        -208,
+        -80
+      ],
+      "id": "192732e4-84f9-4472-b71d-f6cf83b4f580",
+      "name": "Patient reply received",
+      "credentials": {
+        "imap": {
+          "id": "fJtUqXZVcxFRzD1K",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7ac859f6-96b6-48d6-ad54-6bf33020bc9d",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "tahanadeem934@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        64,
+        -80
+      ],
+      "id": "c4707f49-d78b-477b-9472-abf752d02552",
+      "name": "Skip own emails"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.1-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.1-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You classify a patient's reply to an appointment reminder email.\nReply with exactly ONE word and nothing else: confirm, reschedule, question or unclear.\n\nconfirm = the patient says they will attend (for example \"yes\", \"I'll be there\", \"confirmed\").\nreschedule = the patient wants a different date or time, or says they can't make it.\nquestion = the patient asks something (location, cost, what to bring, etc.).\nunclear = anything else, or you are not sure.\n\nOnly judge the patient's NEW message at the top. Ignore any quoted older emails below it.\n\nReply text:\n{{ $json.textPlain }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        304,
+        -96
+      ],
+      "id": "914ef918-ef17-4529-9709-e86a5e82ecc4",
+      "name": "Classify email",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "npBA5IwRho8aDNqm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4f4aaf4e-75f5-4c75-9a8c-e2b5c6336650",
+              "name": "label",
+              "value": "={{ $json.content.parts[0].text.trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "03d487da-15a0-4982-8c6f-43b1b67fc462",
+              "name": "=patient_email",
+              "value": "={{ ($('Patient reply received').item.json.from.match(/<(.+?)>/) || [null, $('Patient reply received').item.json.from])[1].toLowerCase().trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        -96
+      ],
+      "id": "5a978f83-680c-4e92-8b59-8fbeb4818034",
+      "name": "Prepare reply data"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c38860a1-5e4e-44cd-b169-8b8100420d5e",
+                    "leftValue": "={{ $json.label }}",
+                    "rightValue": "reschedule",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reschedule"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.label }}",
+                    "rightValue": "confirm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "826dac8e-4c64-41d3-900a-b7e210acf162"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "49203726-eca9-4dbf-a27c-43ade5abb008",
+                    "leftValue": "={{ $json.label }}",
+                    "rightValue": "question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "question"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "unclear"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        848,
+        -128
+      ],
+      "id": "df5c6220-c74f-4abd-91b0-d4d0ee9a7999",
+      "name": "Route reply"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $json.patient_email }}"
+            },
+            {
+              "keyName": "reminder_sent",
+              "keyValue": "yes"
+            },
+            {
+              "keyName": "status",
+              "keyValue": "booked"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "confirmed"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointments_date",
+              "displayName": "appointments_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointment_time",
+              "displayName": "appointment_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminder_sent",
+              "displayName": "reminder_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        -192
+      ],
+      "id": "daf0f555-3e6f-40d0-ade7-895339c7ab9f",
+      "name": "Mark confirmed",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "tahanadeem934@gmail.com",
+        "toEmail": "tahanadeem934@gmail.com",
+        "subject": "Front desk: patient reply needs attention",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#b45309;color:#ffffff;padding:18px 24px\">\n    <h2 style=\"margin:0;font-size:20px\">Patient reply needs a person</h2>\n  </div>\n  <div style=\"padding:24px;color:#1f2937;font-size:15px\">\n    <p><b>From:</b> {{ $('Prepare reply data').item.json.patient_email }}</p>\n    <p><b>AI label:</b> {{ $('Prepare reply data').item.json.label }}</p>\n    <p><b>Their message:</b></p>\n    <p style=\"background:#f3f4f6;padding:12px;border-radius:6px\">{{ $('Patient reply received').item.json.textPlain }}</p>\n  </div>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1616,
+        -128
+      ],
+      "id": "9cf30275-61c5-484f-b368-2422958acf88",
+      "name": "Alert front desk",
+      "webhookId": "d0799924-e437-457c-892c-93a12df486e3",
+      "credentials": {
+        "smtp": {
+          "id": "9NQzrGXqv3yCUUzO",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        -272
+      ],
+      "id": "d3a75bce-3e72-4eae-9607-097c0e87df50",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "npBA5IwRho8aDNqm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Patient reply received').item.json.textPlain }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "new_date",
+              "description": "The new appointment date in YYYY-MM-DD format. Leave empty if none is given."
+            },
+            {
+              "name": "new_time",
+              "description": "The new appointment time in 24-hour HH:MM format, like 14:00. Leave empty if none is given."
+            }
+          ]
+        },
+        "options": {
+          "systemPromptTemplate": "=Extract the new appointment date and time from the patient's message. Today's date is {{ $today.toFormat('yyyy-MM-dd') }}. Never guess: if a date or time isn't clearly stated, leave it empty."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        1072,
+        -416
+      ],
+      "id": "77db900e-7e13-4a9f-9935-053596ccf582",
+      "name": "Read new time",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "97fd3253-a1b2-4cf6-9ac4-719ac7e0465f",
+              "leftValue": "={{ $json.output.new_date }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c09bde5b-8400-4812-836c-d706b9fa1857",
+              "leftValue": "={{ $json.output.new_time }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1472,
+        -416
+      ],
+      "id": "24c50b24-68b6-4361-a224-1a2f63966940",
+      "name": "Got date and time?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "appointments_date",
+              "keyValue": "={{ $json.output.new_date }}"
+            },
+            {
+              "keyName": "appointment_time",
+              "keyValue": "={{ $json.output.new_time }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        -432
+      ],
+      "id": "cbd240e5-e836-4b88-9df1-2785420a026b",
+      "name": "Check new slot",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $('Prepare reply data').item.json.patient_email }}"
+            },
+            {
+              "keyName": "reminder_sent",
+              "keyValue": "yes"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "appointments_date": "={{ $('Read new time').item.json.output.new_date }}",
+            "appointment_time": "={{ $('Read new time').item.json.output.new_time }}",
+            "status": "booked",
+            "reminder_sent": "no"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointments_date",
+              "displayName": "appointments_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointment_time",
+              "displayName": "appointment_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminder_sent",
+              "displayName": "reminder_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        2192,
+        -448
+      ],
+      "id": "e5d069e6-6389-4b43-a4f0-573d1a76b548",
+      "name": "Move booking"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tahanadeem934@gmail.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Your appointment has been moved",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#2F3E5C;color:#ffffff;padding:18px 24px\">\n    <h2 style=\"margin:0;font-size:20px\">Appointment Rescheduled</h2>\n  </div>\n  <div style=\"padding:24px;color:#1f2937;font-size:15px\">\n    <p>Hi {{ $json.name }},</p>\n    <p>Your appointment has been moved to:</p>\n    <p><b>{{ $json.appointments_date }}</b> at <b>{{ $json.appointment_time }}</b></p>\n    <p style=\"color:#6b7280;font-size:13px\">You'll get a reminder the day before.</p>\n    <p style=\"margin-top:20px;font-size:13px;color:#6b7280\">To change or cancel, reply to this email or book a new time here:</p>\n    <a href=\"YOUR_PRODUCTION_FORM_URL\" style=\"display:inline-block;padding:10px 20px;background:#2F3E5C;color:#ffffff;border-radius:8px;text-decoration:none\">Book a new time</a>\n  </div>\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2384,
+        -448
+      ],
+      "id": "a8575367-d1a3-42e8-96f4-d055654b8965",
+      "name": "Reschedule confirmation",
+      "webhookId": "e8109c27-2805-4fff-9542-471a8e13c121",
+      "credentials": {
+        "smtp": {
+          "id": "9NQzrGXqv3yCUUzO",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        320,
+        80
+      ],
+      "id": "594ccba6-532d-401e-a879-d3705f832ecb",
+      "name": " do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1840,
+        -128
+      ],
+      "id": "fa6bb3df-9f38-404e-9f3c-6018942dc2b1",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4cffba0d-d177-4da1-9a51-af692d072c4e",
+              "leftValue": "={{ $json.id ?? '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1984,
+        -432
+      ],
+      "id": "9aaeb28d-efcd-4c82-8e00-4106798db7a4",
+      "name": "New slot free?"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Patient reply received": {
+      "main": [
+        [
+          {
+            "node": "Skip own emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip own emails": {
+      "main": [
+        [
+          {
+            "node": "Classify email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": " do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify email": {
+      "main": [
+        [
+          {
+            "node": "Prepare reply data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare reply data": {
+      "main": [
+        [
+          {
+            "node": "Route reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route reply": {
+      "main": [
+        [
+          {
+            "node": "Read new time",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert front desk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert front desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark confirmed": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Read new time",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read new time": {
+      "main": [
+        [
+          {
+            "node": "Got date and time?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Got date and time?": {
+      "main": [
+        [
+          {
+            "node": "Check new slot",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert front desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check new slot": {
+      "main": [
+        [
+          {
+            "node": "New slot free?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move booking": {
+      "main": [
+        [
+          {
+            "node": "Reschedule confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert front desk": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New slot free?": {
+      "main": [
+        [
+          {
+            "node": "Move booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert front desk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "yaPVF5SnLRoF54GJ"
+  },
+  "versionId": "ba32757f-e500-4dee-ac3a-91dca94fb80b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e61b7d07ff4ff963f553a413b6643792d88b73b02439378d63f44be8f3dd8b63"
+  },
+  "id": "AkgKFB7cuT7XYVdK",
+  "tags": []
+}

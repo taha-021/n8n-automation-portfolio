@@ -1,0 +1,492 @@
+{
+  "name": "Clinic - Booking",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Book an Appointment",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "name"
+            },
+            {
+              "fieldLabel": "email",
+              "fieldType": "email"
+            },
+            {
+              "fieldLabel": "reason"
+            },
+            {
+              "fieldLabel": "date",
+              "fieldType": "date"
+            },
+            {
+              "fieldLabel": "time",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "09:00"
+                  },
+                  {
+                    "option": "10:00"
+                  },
+                  {
+                    "option": "11:00"
+                  },
+                  {
+                    "option": "12:00"
+                  },
+                  {
+                    "option": "13:00"
+                  },
+                  {
+                    "option": "14:00"
+                  },
+                  {
+                    "option": "15:00"
+                  },
+                  {
+                    "option": "16:00"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -144,
+        -48
+      ],
+      "id": "1215bbf2-6ef1-4c64-b7f8-3ff12b155c26",
+      "name": "On form submission",
+      "webhookId": "64dc0414-347c-4e30-9b90-27f5e99d47b8"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "name": "={{ $('On form submission').item.json.name }}",
+            "email": "={{ $('On form submission').item.json.email }}",
+            "reason": "={{ $('On form submission').item.json.reason }}",
+            "appointments_date": "={{ $('On form submission').item.json.date }}",
+            "reminder_sent": "no",
+            "status": "booked",
+            "appointment_time": "={{ $('On form submission').item.json.time }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reason",
+              "displayName": "reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointments_date",
+              "displayName": "appointments_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "appointment_time",
+              "displayName": "appointment_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "reminder_sent",
+              "displayName": "reminder_sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1008,
+        -80
+      ],
+      "id": "29845f45-40d4-406a-8354-0a3164978425",
+      "name": "Insert row"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "07529644-45b1-4038-b035-1c26cf5eb9da",
+              "leftValue": "={{ $json.date }}",
+              "rightValue": "={{ $today }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "afterOrEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -48
+      ],
+      "id": "87c5e23f-e954-4d46-b347-4933759918ab",
+      "name": "Date not in past"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "appointments_date",
+              "keyValue": "={{ $json.date }}"
+            },
+            {
+              "keyName": "appointment_time",
+              "keyValue": "={{ $json.time }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        -64
+      ],
+      "id": "6b706d33-3329-45f0-9b5b-2045ebda31dc",
+      "name": "Check slot taken",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "completionTitle": "That date has passed",
+        "completionMessage": "Please go back and choose today or a later date.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        160,
+        192
+      ],
+      "id": "3a10b600-20fb-4ba3-976b-71c617abe8fc",
+      "name": "Another date",
+      "webhookId": "929fdd4f-3097-400c-93b3-9c1fb902987c"
+    },
+    {
+      "parameters": {
+        "operation": "completion",
+        "respondWith": "showText",
+        "responseText": "=<div style=\"font-family:Arial,sans-serif;max-width:480px;margin:40px auto;padding:28px;border:1px solid #e5e7eb;border-radius:12px;text-align:center\">\n  <h2 style=\"color:#b91c1c;margin-top:0\">That time is already booked</h2>\n  <p style=\"color:#4b5563\">These times are still free on that day:</p>\n  <div>{{ $('Find free slots').item.json.chips }}</div>\n  <p style=\"color:#6b7280;font-size:14px;margin-top:20px\">Please go back and choose one.</p>\n</div>"
+      },
+      "type": "n8n-nodes-base.form",
+      "typeVersion": 2.5,
+      "position": [
+        720,
+        352
+      ],
+      "id": "140f3240-192c-4316-8c1f-1085f19a839e",
+      "name": "Slot taken message",
+      "webhookId": "1f077880-82cc-4997-9ccc-e1bad5245194"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bef8d84b-531f-4161-80f3-5ed01571a4dc",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        -64
+      ],
+      "id": "fac62b97-731d-4398-86c3-8111e7cac1a3",
+      "name": "Slot free?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "ymB3TwUeW3UCCtpq",
+          "mode": "list",
+          "cachedResultName": "appointments",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/ymB3TwUeW3UCCtpq"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "appointments_date",
+              "keyValue": "={{ $('On form submission').item.json.date }}"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        112
+      ],
+      "id": "a3fd607e-ded8-4c18-97de-b9ca0ed39e20",
+      "name": "get days booking"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allSlots = ['09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];\nconst booked = $input.all().map(i => i.json.appointment_time);\nconst free = allSlots.filter(t => !booked.includes(t));\nconst chips = free.map(t => '<span style=\"display:inline-block;margin:4px;padding:8px 14px;border-radius:20px;background:#e8f0fe;color:#1a3c7a;font-weight:600\">' + t + '</span>').join('');\nreturn [{ json: { free_slots: free.length ? free.join(', ') : 'none left, please pick another date', chips: chips || 'No free times left on this date.' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        112
+      ],
+      "id": "1aea7cf5-a40f-4396-8a10-098df89e5cbf",
+      "name": "Find free slots"
+    },
+    {
+      "parameters": {
+        "fromEmail": "tahanadeem934@gmail.com",
+        "toEmail": "={{ $('On form submission').item.json.email }}",
+        "subject": "Your appointment is confirmed",
+        "html": "=<div style=\"font-family:Arial,sans-serif;max-width:520px;margin:auto;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden\">\n  <div style=\"background:#2F3E5C;color:#ffffff;padding:18px 24px\">\n    <h2 style=\"margin:0;font-size:20px\">Appointment Confirmed</h2>\n  </div>\n  <div style=\"padding:24px;color:#1f2937;font-size:15px\">\n    <p>Hi {{ $('On form submission').item.json.name }},</p>\n    <p>Your appointment is booked. Here are the details:</p>\n    <table style=\"width:100%;border-collapse:collapse\">\n      <tr><td style=\"padding:8px 0;color:#6b7280\">Date</td><td style=\"padding:8px 0\"><b>{{ $('On form submission').item.json.date }}</b></td></tr>\n      <tr><td style=\"padding:8px 0;color:#6b7280\">Time</td><td style=\"padding:8px 0\"><b>{{ $('On form submission').item.json.time }}</b></td></tr>\n    </table>\n    <p style=\"margin-top:20px;color:#6b7280;font-size:13px\">Please arrive 10 minutes early.</p>\n    <p style=\"margin-top:20px;font-size:13px;color:#6b7280\">To change or cancel, reply to this email or book a new time here:</p>\n    <a href=\"YOUR_PRODUCTION_FORM_URL\" style=\"display:inline-block;padding:10px 20px;background:#2F3E5C;color:#ffffff;border-radius:8px;text-decoration:none\">Book a new time</a>\n  </div>\n</div>",
+        "options": {
+          "appendAttribution": true
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1280,
+        -80
+      ],
+      "id": "51a22608-2233-4e98-8109-370c7a97bcb8",
+      "name": "Confirmation email",
+      "webhookId": "482ebb07-bd55-4f6f-adb4-e82a80ba3d89",
+      "credentials": {
+        "smtp": {
+          "id": "9NQzrGXqv3yCUUzO",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Date not in past",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date not in past": {
+      "main": [
+        [
+          {
+            "node": "Check slot taken",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Another date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check slot taken": {
+      "main": [
+        [
+          {
+            "node": "Slot free?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot free?": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get days booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Confirmation email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get days booking": {
+      "main": [
+        [
+          {
+            "node": "Find free slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find free slots": {
+      "main": [
+        [
+          {
+            "node": "Slot taken message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "yaPVF5SnLRoF54GJ",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "ca502578-62f3-4028-a36a-3da77a04de15",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e61b7d07ff4ff963f553a413b6643792d88b73b02439378d63f44be8f3dd8b63"
+  },
+  "id": "hvMT1kgbiNYSs7KA",
+  "tags": []
+}
