@@ -7,11 +7,8 @@ Production-grade n8n workflows powered by AI. Built and tested on a low-spec lap
 | Project | What it does | Stack |
 |---|---|---|
 | **[AI Lead Finder & Qualifier](https://github.com/taha-021/n8n-automation-portfolio/tree/main/lead-finder)** | Finds local businesses via Google Maps, scrapes their websites for emails, scores them with AI (1-10), generates personalized cold outreach, and saves qualified leads to Google Sheets. Deduplicates across runs. | n8n, Apify, Firecrawl, Gemini, Google Sheets |
-
 | **[AI Lead Qualifier](https://github.com/taha-021/n8n-automation-portfolio/tree/main/lead-qualifier)** | Scores leads from a web form 1–10 with AI, logs them, alerts on high-value leads | n8n, Gemini, Discord |
-
 | **[AI Email Triage](https://github.com/taha-021/n8n-automation-portfolio/tree/main/email-automation)** | Reads Gmail over IMAP, classifies as urgent/support/sales/spam, drafts replies | n8n, Gemini, IMAP/SMTP |
-
 | **[Clinic Appointment Agent](https://github.com/taha-021/n8n-automation-portfolio/tree/main/Clinic%20Appointment%20Agent)** | Booking, reminders, reschedule/confirm replies, human handoff | n8n, Gemini, IMAP/SMTP |
 
 ## Reliability
