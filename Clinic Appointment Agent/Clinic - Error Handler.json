@@ -1,0 +1,154 @@
+{
+  "name": "Clinic - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "422ad3e1-b044-4492-ac7d-82cbf2cb5403",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=Error in {{ $('Error Trigger').item.json.workflow.name }} at {{ $('Error Trigger').item.json.execution.lastNodeExecuted }}: {{ $('Error Trigger').item.json.execution.error.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "0cd9f64c-e2af-4d1e-b038-0f6e0ba5b002",
+      "name": "Discord",
+      "webhookId": "16738293-cfcd-4df6-a66f-6528c36adf39",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "yjFdHa7CimWTfRZ1",
+          "name": "Discord Webhook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "eJCI3kBURsc7ogiR",
+          "mode": "list",
+          "cachedResultName": "error_logs",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/eJCI3kBURsc7ogiR"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "node_name": "={{ $json.execution.lastNodeExecuted }}",
+            "error_message": "={{ $json.execution.error.message }}",
+            "timestamp": "={{ $now }}",
+            "workflow": "={{ $json.workflow.name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "node_name",
+              "displayName": "node_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "optimizeBulk": false
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "baf4b5f2-bec3-41e4-a603-c8778de2721a",
+      "name": "Insert row"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Insert row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert row": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "47a2fe03-2cad-442b-b0e8-241c89d68cb3",
+  "meta": {
+    "instanceId": "e61b7d07ff4ff963f553a413b6643792d88b73b02439378d63f44be8f3dd8b63"
+  },
+  "id": "yaPVF5SnLRoF54GJ",
+  "tags": []
+}
