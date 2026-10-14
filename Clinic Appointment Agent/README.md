@@ -36,4 +36,4 @@ Contact
 
 Feel free to ask for the full demo video.
 
-LinkedIn
+LinkedIn : https://www.linkedin.com/in/tahanadeem07
