@@ -1,0 +1,765 @@
+{
+  "name": "Lead Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Find Local Business Leads",
+        "formDescription": "Enter your target niche and location to find qualified leads.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "niche",
+              "placeholder": "gyms"
+            },
+            {
+              "fieldLabel": "location",
+              "placeholder": "dubai"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -48,
+        16
+      ],
+      "id": "874a6569-ea50-491b-b075-fb83ae8479d2",
+      "name": "On form submission",
+      "webhookId": "dfc40378-1dcc-4dc7-bc31-2da5cf6398e3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token=YOUR_APIFY_TOKEN",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"searchStringsArray\": [\"{{ $json.niche }} in {{ $json.location }}\"],\n  \"maxCrawledPlacesPerSearch\": 10,\n  \"language\": \"en\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        16
+      ],
+      "id": "0a21c73e-c982-4192-a058-5e4876b5a8d4",
+      "name": "Search Google Maps"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "87c96412-d314-4690-b467-edac49f33b14",
+              "leftValue": "={{ $json.website }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        784,
+        16
+      ],
+      "id": "14e2bc5a-29b6-4f12-a869-4f1f4bc00255",
+      "name": "Has Website?"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const markdown = $input.item.json.data?.markdown || '';\nconst emails = markdown.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g) || [];\nconst uniqueEmails = [...new Set(emails.map(e => e.toLowerCase()))];\nconst websiteEmails = uniqueEmails.filter(e =>\n  !e.includes('example.com') && !e.includes('.png') && !e.includes('.jpg')\n);\nreturn {\n  json: {\n    title: $('Has Website?').item.json.title,\n    phone: $('Has Website?').item.json.phone,\n    website: $('Has Website?').item.json.website,\n    rating: $('Has Website?').item.json.totalScore,\n    reviews: $('Has Website?').item.json.reviewsCount,\n    address: $('Has Website?').item.json.address,\n    emails: websiteEmails,\n    email_found: websiteEmails.length > 0 ? 'yes' : 'no'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -16
+      ],
+      "id": "5f169859-767d-45ec-a4e0-53128a7fcbe4",
+      "name": "Extract Emails"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = $input.item.json.content.parts[0].text.trim();\nconst [score, reason] = text.split('|').map(s => s.trim());\nconst original = $('Extract Emails').item.json;\n\nreturn {\n  json: {\n    title: original.title,\n    phone: original.phone,\n    website: original.website,\n    rating: original.rating,\n    reviews: original.reviews,\n    address: original.address,\n    email: original.emails[0] || '',\n    lead_score: parseInt(score),\n    lead_reason: reason\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        -16
+      ],
+      "id": "1720c571-cc97-426a-b448-f46fc33da97a",
+      "name": "Parse Score"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-lite-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-lite-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You score local business leads for a digital agency. Score 1-10 (10 = best lead).\n\nSignals:\n- No email found on website → +3\n- Reviews < 50 → +2\n- Rating < 4.5 → +2\n- Reviews > 300 → -2\n- Has email found → -1\n\nBusiness: {{ $json.title }}\nRating: {{ $json.rating }} ({{ $json.reviews }} reviews)\nEmail found: {{ $json.email_found }}\n\nCRITICAL: Reply in EXACTLY this format. No thinking. No explanation. No math shown.\nscore|reason\n\nExample valid reply: 8|No email found and low review count makes them accessible."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        -16
+      ],
+      "id": "b592858d-f83e-4988-8ea0-bbfe7273072c",
+      "name": "Score Lead",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "npBA5IwRho8aDNqm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "53e33e9e-7e75-49c0-9ee4-98b30afbcb1f",
+              "leftValue": "={{ $json.lead_score }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1920,
+        -16
+      ],
+      "id": "dede3dfe-c8e4-48c9-ba23-322bdad6227c",
+      "name": "Hot Lead?"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius",
+          "mode": "list",
+          "cachedResultName": "Lead Finder",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Title": "={{ $('Parse Score').item.json.title }}",
+            "Phone": "={{ $('Parse Score').item.json.phone }}",
+            "Website": "={{ $('Parse Score').item.json.website }}",
+            "Email": "={{ $('Parse Score').item.json.email }}",
+            "Rating": "={{ $('Parse Score').item.json.rating }}",
+            "Address": "={{ $('Parse Score').item.json.address }}",
+            "Score": "={{ $('Parse Score').item.json.lead_score }}",
+            "Reason": "={{ $('Parse Score').item.json.lead_reason }}",
+            "Outreach": "={{ $('Write Outreach').item.json.content.parts[0].text }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Rating",
+              "displayName": "Rating",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reviews",
+              "displayName": "Reviews",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Outreach",
+              "displayName": "Outreach",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2448,
+        -32
+      ],
+      "id": "fa1b3e03-119d-444e-b4a0-0bc4ae3397c7",
+      "name": "Save Hot Leads",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "mNjHBpI0Lf9DqFQj",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v1/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_FIRECRAWL_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"url\": \"{{ $json.website }}\", \"formats\": [\"markdown\"] }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "42e9a623-1dc9-41a3-bac0-49d0a0a8f0d6",
+      "name": "Scrap",
+      "alwaysOutputData": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius",
+          "mode": "list",
+          "cachedResultName": "Lead Finder",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KxU4mqJBH0Jz8xGBtfIfkzOfuxy2JWEe2FwdyABhius/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        368,
+        16
+      ],
+      "id": "bb595b64-2fe7-4e42-8353-4edc081a050f",
+      "name": "Read Existing Leads",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "mNjHBpI0Lf9DqFQj",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newLeads = $('Search Google Maps').all().map(i => i.json);\nconst existing = $input.all().map(i => i.json);\n\nconst norm = u => (u || '').toLowerCase().trim().replace(/\\/$/, '').replace(/^https?:\\/\\//, '').replace(/^www\\./, '');\n\nconst seenInSheet = new Set(existing.map(l => norm(l.Website)));\nconst seenInBatch = new Set();\n\nreturn newLeads\n  .filter(l => {\n    const url = norm(l.website);\n    if (!url) return false;\n    if (seenInSheet.has(url)) return false;\n    if (seenInBatch.has(url)) return false;\n    seenInBatch.add(url);\n    return true;\n  })\n  .map(l => ({ json: l }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        16
+      ],
+      "id": "bf0da992-d482-4808-ab9f-0621607f71e0",
+      "name": "Filter Existing"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-lite-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-lite-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You write short cold outreach emails for a digital agency that builds websites and automations for local businesses.\n\nWrite a 3-sentence cold email to this business:\n\nBusiness: {{ $json.title }}\nIndustry: real estate\nRating: {{ $json.rating }} ({{ $json.reviews }} reviews)\nWebsite: {{ $json.website }}\nWhy they're a good lead: {{ $json.lead_reason }}\n\nRules:\n- Friendly, not salesy\n- Mention ONE specific observation about their business\n- End with a soft question, not a hard CTA\n- No \"I hope this email finds you well\"\n- Sign as \"Taha\"\n\nOutput the email body only. No subject line."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2144,
+        -32
+      ],
+      "id": "1781da4a-c845-48b0-90cf-ce0849285a36",
+      "name": "Write Outreach",
+      "retryOnFail": true,
+      "maxTries": 4,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "npBA5IwRho8aDNqm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        272
+      ],
+      "id": "5f575b0d-4980-4b2d-afe2-916f1dbf430f",
+      "name": "Cold lead"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        832,
+        256
+      ],
+      "id": "22a32bd7-1e2f-4ff4-9744-1efa9f8228fb",
+      "name": "No website"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        256
+      ],
+      "id": "f457c353-26a9-4560-860f-d78ec8e9e6a2",
+      "name": "No website1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        176,
+        -304
+      ],
+      "id": "1d15be9e-3bd3-41bd-8c95-55a01215b7aa",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "eJCI3kBURsc7ogiR",
+          "mode": "list",
+          "cachedResultName": "error_logs",
+          "cachedResultUrl": "/projects/DhMXGHIPDPqb49bb/datatables/eJCI3kBURsc7ogiR"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "workflow": "={{ $json.workflow.name }}",
+            "timestamp": "={{ $now }}",
+            "error_message": "={{ $json.execution.error.message }}",
+            "node_name": "={{ $json.execution.lastNodeExecuted }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "node_name",
+              "displayName": "node_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        -304
+      ],
+      "id": "44bc66f1-6b3f-44bc-ae2d-4638b6dd03e3",
+      "name": "Log error"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🚨 Lead Finder Failed\nWorkflow: {{ $json.workflow.name }}\nNode: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -304
+      ],
+      "id": "459a835a-2c4b-4b90-ae16-7f1734c5826c",
+      "name": "Alert Discord",
+      "webhookId": "70af0987-37eb-46a6-82fa-8b18779848ef",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "yjFdHa7CimWTfRZ1",
+          "name": "Discord Webhook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Search Google Maps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Google Maps": {
+      "main": [
+        [
+          {
+            "node": "Read Existing Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Website?": {
+      "main": [
+        [
+          {
+            "node": "Scrap",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Emails": {
+      "main": [
+        [
+          {
+            "node": "Score Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead": {
+      "main": [
+        [
+          {
+            "node": "Parse Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Score": {
+      "main": [
+        [
+          {
+            "node": "Hot Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot Lead?": {
+      "main": [
+        [
+          {
+            "node": "Write Outreach",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cold lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrap": {
+      "main": [
+        [
+          {
+            "node": "Extract Emails",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No website1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Leads": {
+      "main": [
+        [
+          {
+            "node": "Filter Existing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Existing": {
+      "main": [
+        [
+          {
+            "node": "Has Website?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Outreach": {
+      "main": [
+        [
+          {
+            "node": "Save Hot Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log error": {
+      "main": [
+        [
+          {
+            "node": "Alert Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "xE41Qo3YIAEIlZhk",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1
+  },
+  "versionId": "3031f792-adde-48cd-9700-1be1392a2408",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e61b7d07ff4ff963f553a413b6643792d88b73b02439378d63f44be8f3dd8b63"
+  },
+  "id": "xE41Qo3YIAEIlZhk",
+  "tags": []
+}
